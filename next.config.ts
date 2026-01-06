@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        hostname: "baberwal-lms.t3.storage.dev",
+        hostname: "lmspart2.t3.storage.dev",
         port: "",
         protocol: "https",
       },
