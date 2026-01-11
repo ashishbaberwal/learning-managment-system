@@ -30,15 +30,17 @@ import {
 import {
     ChevronDown,
     ChevronRight,
-    DeleteIcon,
     FileText,
     GripVertical,
-    Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
 import { reorderChapters, reorderLessons } from "../actions";
+import { NewChapterModel } from "./NewChapterModel";
+import { NewLessonModel } from "./NewLessonModel";
+import { DeleteLesson } from "./DeleteLesson";
+import { DeleteChapter } from "./DeleteChapter";
 
 interface iAppProps {
     data: AdminCourseSingluarType;
@@ -74,19 +76,20 @@ export function CourseStructure({ data }: iAppProps) {
 
     useEffect(() => {
         setItems((prevItems) => {
-            const updateditems = data.chapter.map((chapter) => ({
-                id: chapter.id,
-                title: chapter.title,
-                order: chapter.position,
-                isOpen:
-                    prevItems.find((item) => item.id === chapter.id)?.isOpen ??
-                    true, //default chapter sto open
-                lessons: chapter.lessons.map((lesson) => ({
-                    id: lesson.id,
-                    title: lesson.title,
-                    order: lesson.position,
-                })),
-            })) || [];
+            const updateditems =
+                data.chapter.map((chapter) => ({
+                    id: chapter.id,
+                    title: chapter.title,
+                    order: chapter.position,
+                    isOpen:
+                        prevItems.find((item) => item.id === chapter.id)
+                            ?.isOpen ?? true, //default chapter sto open
+                    lessons: chapter.lessons.map((lesson) => ({
+                        id: lesson.id,
+                        title: lesson.title,
+                        order: lesson.position,
+                    })),
+                })) || [];
 
             return updateditems;
         });
@@ -314,6 +317,7 @@ export function CourseStructure({ data }: iAppProps) {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between border-b border-border">
                     <CardTitle>Chapters</CardTitle>
+                    <NewChapterModel courseId={data.id} />
                 </CardHeader>
                 <CardContent className="space-y-8">
                     <SortableContext
@@ -360,12 +364,10 @@ export function CourseStructure({ data }: iAppProps) {
                                                         {item.title}
                                                     </p>
                                                 </div>
-                                                <Button
-                                                    size="icon"
-                                                    variant="outline"
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
+                                                <DeleteChapter
+                                                    chapterId={item.id}
+                                                    courseId={data.id}
+                                                />
                                             </div>
 
                                             <CollapsibleContent>
@@ -415,12 +417,17 @@ export function CourseStructure({ data }: iAppProps) {
                                                                                     }
                                                                                 </Link>
                                                                             </div>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="icon"
-                                                                            >
-                                                                                <Trash2 className="size-4" />
-                                                                            </Button>
+                                                                            <DeleteLesson
+                                                                                chapterId={
+                                                                                    item.id
+                                                                                }
+                                                                                courseId={
+                                                                                    data.id
+                                                                                }
+                                                                                lessonId={
+                                                                                    lesson.id
+                                                                                }
+                                                                            />
                                                                         </div>
                                                                     )}
                                                                 </SortableItem>
@@ -428,12 +435,10 @@ export function CourseStructure({ data }: iAppProps) {
                                                         )}
                                                     </SortableContext>
                                                     <div className="p-2 ">
-                                                        <Button
-                                                            className="w-full"
-                                                            variant="outline"
-                                                        >
-                                                            Craete New Lesson
-                                                        </Button>
+                                                        <NewLessonModel
+                                                            chapterId={item.id}
+                                                            courseId={data.id}
+                                                        />
                                                     </div>
                                                 </div>
                                             </CollapsibleContent>
