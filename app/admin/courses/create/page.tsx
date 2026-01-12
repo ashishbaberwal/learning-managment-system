@@ -55,7 +55,7 @@ import { useRouter } from "next/navigation";
 export default function CourseCreationPage() {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
-    
+
     const form = useForm<CourseSchemaType>({
         resolver: zodResolver(courseSchema),
         defaultValues: {
@@ -219,6 +219,7 @@ export default function CourseCreationPage() {
                                             <Uploader
                                                 onChange={field.onChange}
                                                 value={field.value}
+                                                fileTypeAccepted="image"
                                             />
                                         </FormControl>
                                         <FormMessage />

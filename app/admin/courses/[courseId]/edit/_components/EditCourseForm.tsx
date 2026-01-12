@@ -40,11 +40,11 @@ import { useRouter } from "next/navigation";
 import { AdminCourseSingluarType } from "@/app/data/admin/admin-get-course";
 import { editCourse } from "../actions";
 
-interface iAppProps{
-    data: AdminCourseSingluarType
+interface iAppProps {
+    data: AdminCourseSingluarType;
 }
 
-export function EditCourseForm({data}:iAppProps) {
+export function EditCourseForm({ data }: iAppProps) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
 
@@ -57,7 +57,7 @@ export function EditCourseForm({data}:iAppProps) {
             price: data.price,
             duration: data.duration,
             level: data.level,
-            category: data.category as CourseSchemaType['category'],
+            category: data.category as CourseSchemaType["category"],
             status: data.status,
             slug: data.slug,
             smallDescription: data.smallDescription,
@@ -172,11 +172,8 @@ export function EditCourseForm({data}:iAppProps) {
                         <FormItem className="w-full">
                             <FormLabel>Thumbnail Image</FormLabel>
                             <FormControl>
-                                {/* <Input
-                                                placeholder="thumbnail url"
-                                                {...field}
-                                            /> */}
                                 <Uploader
+                                    fileTypeAccepted="image"
                                     onChange={field.onChange}
                                     value={field.value}
                                 />
