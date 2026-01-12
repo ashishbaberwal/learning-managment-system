@@ -2,9 +2,14 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "./require-admin";
 
 export async function adminGetCourses() {
+    
+    // this line helps for eaiting the loading time to see skeleton
+    await new Promise ((resolve) => setTimeout(resolve, 2000));
+
     await requireAdmin();
 
     const data = await prisma.course.findMany({
+
 
         orderBy: {
             createdAt: 'desc',
