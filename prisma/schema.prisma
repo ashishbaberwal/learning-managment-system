@@ -20,7 +20,7 @@ model Test {
 }
 
 model User {
-  id            String    @id
+  id            String        @id
   name          String
   email         String
   emailVerified Boolean
@@ -30,6 +30,8 @@ model User {
   sessions      Session[]
   accounts      Account[]
   courses       Course[]
+  enrollment   Enrollment[]
+  stripeCustomerId String? @unique
 
   role       String?
   banned     Boolean?  @default(false)
@@ -108,7 +110,8 @@ model Course {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
 
-  chapter Chapter[]
+  chapter     Chapter[]
+  enrollment Enrollment[]
 }
 
 enum CourseLevel {
@@ -144,10 +147,32 @@ model Lesson {
   description  String?
   thumbnailKey String?
   videoKey     String?
-  position Int
+  position     Int
 
   createdAt DateTime @default(now())
   upadtedAt DateTime @updatedAt
-  Chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  Chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   chapterId String
+}
+
+model Enrollment {
+  id String @id @default(uuid())
+
+  amount Int
+  status EnrollmentStatus @default(Pending)
+
+  createdAt DateTime @default(now())
+  upadtedAt DateTime @updatedAt
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  @@unique([userId, courseId])
+}
+
+enum EnrollmentStatus {
+  Pending
+  Active
+  Cancel
 }
