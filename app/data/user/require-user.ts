@@ -13,4 +13,5 @@ export const requireUser = cache(async () => {
         return redirect("/login");
     }
     return session.user;
+    
 });
