@@ -43,5 +43,8 @@ export default createMiddleware(aj, async (request: NextRequest) => {
     if (request.nextUrl.pathname.startsWith("/admin")) {
         return authMiddleware(request);
     }
+    if (request.nextUrl.pathname === "/api/webhook/stripe") {
+    return NextResponse.next();
+  }
     return NextResponse.next();
 });
