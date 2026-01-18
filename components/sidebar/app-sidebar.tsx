@@ -5,10 +5,10 @@ import {
     IconCamera,
     IconChartBar,
     IconDashboard,
-    IconDatabase,
+
     IconFileAi,
     IconFileDescription,
-    IconFileWord,
+
     IconFolder,
     IconHelp,
     IconListDetails,

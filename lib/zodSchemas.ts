@@ -1,4 +1,4 @@
-import { description } from '@/components/sidebar/chart-area-interactive';
+
 import { z } from 'zod';
 
 

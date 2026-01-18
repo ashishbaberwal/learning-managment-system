@@ -235,7 +235,7 @@ export function CourseStructure({ data }: iAppProps) {
             );
 
             const newLessonIndex = chapterToUpdate.lessons.findIndex(
-                (lessons) => overId
+                (lesson) => lesson.id === overId
             );
 
             if (oldLessonIndex === -1 || newLessonIndex === -1) {

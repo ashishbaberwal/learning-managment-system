@@ -20,7 +20,6 @@ import {
     ArrowLeft,
     Loader2,
     PlusIcon,
-    SpaceIcon,
     SparkleIcon,
 } from "lucide-react";
 import Link from "next/link";

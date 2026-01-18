@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils";
 import {
     CloudUploadIcon,
     ImageIcon,
-    ImagesIcon,
     Loader2,
     XIcon,
 } from "lucide-react";

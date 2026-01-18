@@ -34,7 +34,7 @@ import { RichTextEditor } from "@/components/rich-text-editor/Editor";
 import { Uploader } from "@/components/file-uploader/Uploader";
 import { useTransition } from "react";
 import { tryCatch } from "@/hooks/try-catch";
-// import { CreateCourse } from "./actions";
+
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { AdminCourseSingluarType } from "@/app/data/admin/admin-get-course";
@@ -67,7 +67,7 @@ export function EditCourseForm({ data }: iAppProps) {
     function onSubmit(values: CourseSchemaType) {
         startTransition(async () => {
             const { data: result, error } = await tryCatch(
-                editCourse(values, data.id)
+                editCourse(values, data.id),
             );
 
             if (error) {

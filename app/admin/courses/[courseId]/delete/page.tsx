@@ -14,7 +14,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import { deleteCourse } from "./action";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, Trash, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 export default function DeleteCourseRoute() {
 
