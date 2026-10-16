@@ -114,6 +114,10 @@ model Course {
 
   chapter    Chapter[]
   enrollment Enrollment[]
+
+  @@index([status, createdAt])
+  @@index([category, status])
+  @@index([userId])
 }
 
 enum CourseLevel {
@@ -136,10 +140,12 @@ model Chapter {
 
   createdAt DateTime @default(now())
   upadtedAt DateTime @updatedAt
-  Course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId  String  
+  Course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
 
   lessons Lesson[]
+
+  @@index([courseId, position])
 }
 
 model Lesson {
@@ -156,13 +162,16 @@ model Lesson {
   Chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   chapterId      String
   lessonProgress LessonProgress[]
+
+  @@index([chapterId, position])
 }
 
 model Enrollment {
   id String @id @default(uuid())
 
-  amount Int
-  status EnrollmentStatus @default(Pending)
+  amount          Int
+  status          EnrollmentStatus @default(Pending)
+  stripeSessionId String?          @unique
 
   createdAt DateTime @default(now())
   upadtedAt DateTime @updatedAt
@@ -172,6 +181,8 @@ model Enrollment {
   userId    String
 
   @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@index([status, createdAt])
 }
 
 enum EnrollmentStatus {
@@ -185,10 +196,23 @@ model LessonProgress {
   completed Boolean  @default(false)
   createdAt DateTime @default(now())
   upadtedAt DateTime @updatedAt
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   lessonId  String
 
   @@unique([userId, lessonId])
+  @@index([lessonId])
 }
+
+model StripeWebhookEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
+  payload     Json?
+
+  @@index([eventType, processedAt])
+}
+
+
