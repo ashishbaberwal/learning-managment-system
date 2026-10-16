@@ -16,6 +16,17 @@ export async function getLessonContent(lessonId: string) {
             thumbnailKey: true,
             videoKey: true,
             position: true,
+            videoJobs: {
+                where: {
+                    status: "Completed",
+                    outputKey: { not: null },
+                },
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: {
+                    outputKey: true,
+                },
+            },
             lessonProgress: {
                 where: {
                     userId: session.id,
