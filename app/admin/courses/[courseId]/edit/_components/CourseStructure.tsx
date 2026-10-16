@@ -72,8 +72,6 @@ export function CourseStructure({ data }: iAppProps) {
 
     const [items, setItems] = useState(initialItems);
 
-    console.log(items);
-
     useEffect(() => {
         setItems((prevItems) => {
             const updateditems =
