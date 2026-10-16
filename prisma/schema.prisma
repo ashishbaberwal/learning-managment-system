@@ -265,4 +265,36 @@ model OutboxEvent {
   @@index([aggregateType, aggregateId])
 }
 
+model ProcessedEvent {
+  id            String   @id @default(uuid())
+  eventId       String
+  consumerGroup String
+  processedAt   DateTime @default(now())
+
+  @@unique([eventId, consumerGroup])
+  @@index([consumerGroup, processedAt])
+}
+
+model CourseStats {
+  courseId     String   @id
+  enrollments  Int      @default(0)
+  completions  Int      @default(0)
+  revenueCents Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+model LessonStats {
+  lessonId    String   @id
+  completions Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+model DailyStats {
+  date         DateTime @id @db.Date
+  enrollments  Int      @default(0)
+  completions  Int      @default(0)
+  revenueCents Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
 
