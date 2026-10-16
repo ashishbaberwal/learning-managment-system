@@ -6,6 +6,11 @@ import { S3 } from "@/lib/S3Client";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const deleteFileSchema = z.object({
+    key: z.string().min(1, { message: "Object key is required" }),
+});
 
 const aj = arcjet.withRule(
     fixedWindow({
@@ -29,16 +34,17 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: "dude not good" }, { status: 429 });
         }
 
-        const body = await request.json();
-        const key = body.key;
+        const validation = deleteFileSchema.safeParse(await request.json());
 
-        if (!key) {
+        if (!validation.success) {
             return NextResponse.json(
                 { error: "Missing or invalid object key" },
                 { status: 400 }
 
             );
         }
+
+        const { key } = validation.data;
 
         const command = new DeleteObjectCommand({
             Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
@@ -53,7 +59,7 @@ export async function DELETE(request: Request) {
 
     } catch{
         return NextResponse.json(
-            { error: "Missing or invalid object key" },
+            { error: "Failed to delete file" },
             { status: 500 }
 
         );

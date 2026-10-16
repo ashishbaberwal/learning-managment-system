@@ -9,10 +9,26 @@ import { S3 } from '@/lib/S3Client';
 import arcjet, {  fixedWindow } from '@/lib/arcjet';
 import { requireAdmin } from '@/app/data/admin/require-admin';
 
+const IMAGE_CONTENT_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+] as const;
+
+const VIDEO_CONTENT_TYPES = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+] as const;
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 5000 * 1024 * 1024;
+
 const fileUploadSchmea = z.object({
-    fileName: z.string().min(1, { message: "File is required" }),
+    fileName: z.string().min(1, { message: "File is required" }).max(255),
     contentType: z.string().min(1, { message: "Content Type is required" }),
-    size: z.number().min(1, { message: "Size is required" }),
+    size: z.number().int().positive({ message: "Size is required" }),
     isImage: z.boolean(),
 
 });
@@ -37,7 +53,7 @@ export async function POST(request: Request) {
         });
 
         if (decision.isDenied()) {
-            return NextResponse.json({ error: "dude not good" }, { status: 429 });
+            return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
         }
 
         const body = await request.json();
@@ -52,7 +68,26 @@ export async function POST(request: Request) {
 
         const { fileName, contentType, size } = validation.data
 
-        const uniqueKey = `${uuidv4()}-${fileName}`
+        const isImageType = (IMAGE_CONTENT_TYPES as readonly string[]).includes(contentType);
+        const isVideoType = (VIDEO_CONTENT_TYPES as readonly string[]).includes(contentType);
+
+        if (!isImageType && !isVideoType) {
+            return NextResponse.json({
+                error: 'Unsupported file type'
+            }, { status: 400 })
+        }
+
+        const maxSize = isImageType ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+
+        if (size > maxSize) {
+            return NextResponse.json({
+                error: 'File exceeds the maximum allowed size'
+            }, { status: 400 })
+        }
+
+        const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-200);
+
+        const uniqueKey = `${uuidv4()}-${safeFileName}`
 
         const command = new PutObjectCommand({
             Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,

@@ -3,7 +3,10 @@
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, {  fixedWindow } from "@/lib/arcjet";
 import { prisma } from "@/lib/db";
+import { env } from "@/lib/env";
+import { S3 } from "@/lib/S3Client";
 import { ApiResponse } from "@/lib/types";
+import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { request } from "@arcjet/next";
 import { revalidatePath } from "next/cache";
 
@@ -41,9 +44,67 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
                 };
             }
         }
-        await prisma.course.delete({
+
+        const course = await prisma.course.findUnique({
             where: {
                 id: courseId,
+            },
+            select: {
+                id: true,
+                fileKey: true,
+                chapter: {
+                    select: {
+                        lessons: {
+                            select: {
+                                thumbnailKey: true,
+                                videoKey: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!course) {
+            return {
+                status: "error",
+                message: "Course not found",
+            };
+        }
+
+        const keys = [
+            course.fileKey,
+            ...course.chapter.flatMap((chapter) =>
+                chapter.lessons.flatMap((lesson) => [
+                    lesson.thumbnailKey,
+                    lesson.videoKey,
+                ])
+            ),
+        ].filter((key): key is string => Boolean(key));
+
+        for (let i = 0; i < keys.length; i += 1000) {
+            const batch = keys.slice(i, i + 1000);
+
+            const result = await S3.send(
+                new DeleteObjectsCommand({
+                    Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
+                    Delete: {
+                        Objects: batch.map((Key) => ({ Key })),
+                        Quiet: true,
+                    },
+                })
+            );
+
+            if (result.Errors && result.Errors.length > 0) {
+                throw new Error(
+                    `Failed to delete ${result.Errors.length} S3 object(s)`
+                );
+            }
+        }
+
+        await prisma.course.delete({
+            where: {
+                id: course.id,
             },
         });
 
@@ -51,12 +112,13 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
 
         return {
             status: "success",
-            message: "Course deleted succesfully",
+            message: "Course deleted successfully",
         };
-    } catch {
+    } catch (error) {
+        console.error("deleteCourse failed:", error);
         return {
             status: "error",
-            message: "Failed to delete Courses!",
+            message: "Failed to delete Course!",
         };
     }
 }
