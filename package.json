@@ -10,6 +10,7 @@
     "worker": "node --env-file=.env --import tsx worker/index.ts",
     "relay": "node --env-file=.env --import tsx worker/outbox-relay.ts",
     "analytics": "node --env-file=.env --import tsx worker/analytics-consumer.ts",
+    "recommendations": "node --env-file=.env --import tsx worker/recommendations-consumer.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
