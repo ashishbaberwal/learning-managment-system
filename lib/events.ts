@@ -24,3 +24,34 @@ export function domainEvents(
         topic: DOMAIN_EVENTS_TOPIC,
     }));
 }
+
+export const DOMAIN_EVENT_VERSION = 1;
+
+export type DomainEventEnvelope = {
+    eventId: string;
+    eventType: string;
+    occurredAt: string;
+    aggregateType: string;
+    aggregateId: string;
+    version: number;
+    payload: Prisma.JsonValue;
+};
+
+export function toDomainEventEnvelope(event: {
+    id: string;
+    eventType: string;
+    createdAt: Date;
+    aggregateType: string;
+    aggregateId: string;
+    payload: Prisma.JsonValue;
+}): DomainEventEnvelope {
+    return {
+        eventId: event.id,
+        eventType: event.eventType,
+        occurredAt: event.createdAt.toISOString(),
+        aggregateType: event.aggregateType,
+        aggregateId: event.aggregateId,
+        version: DOMAIN_EVENT_VERSION,
+        payload: event.payload,
+    };
+}
