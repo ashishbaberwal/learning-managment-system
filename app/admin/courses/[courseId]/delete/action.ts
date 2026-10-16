@@ -48,6 +48,7 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
         const course = await prisma.course.findUnique({
             where: {
                 id: courseId,
+                userId: session.user.id,
             },
             select: {
                 id: true,
@@ -105,6 +106,7 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
         await prisma.course.delete({
             where: {
                 id: course.id,
+                userId: session.user.id,
             },
         });
 
