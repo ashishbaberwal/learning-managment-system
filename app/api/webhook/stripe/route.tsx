@@ -1,5 +1,6 @@
 import { Prisma } from "@/lib/generated/prisma";
 import { prisma } from "@/lib/db";
+import { domainEvents, type DomainEventInput } from "@/lib/events";
 import { env } from "@/lib/env";
 import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
@@ -44,88 +45,126 @@ export async function POST(req: Request) {
     }
 
     try {
-        await handleCheckoutCompleted(
+        await processCheckoutCompleted(
+            event,
             event.data.object as Stripe.Checkout.Session
         );
     } catch (error) {
+        if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+        ) {
+            return new Response(null, { status: 200 });
+        }
         console.error("Stripe webhook processing failed:", event.id, error);
         return new Response("Webhook processing failed", { status: 500 });
     }
 
-    try {
-        await prisma.stripeWebhookEvent.create({
+    return new Response(null, { status: 200 });
+}
+
+async function processCheckoutCompleted(
+    event: Stripe.Event,
+    session: Stripe.Checkout.Session
+) {
+    await prisma.$transaction(async (tx) => {
+        await tx.stripeWebhookEvent.create({
             data: {
                 eventId: event.id,
                 eventType: event.type,
                 payload: event as unknown as Prisma.InputJsonValue,
             },
         });
-    } catch (error) {
-        if (
-            !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-            error.code !== "P2002"
-        ) {
-            throw error;
+
+        const enrollmentId = session.metadata?.enrollmentId;
+        const customerId = session.customer as string | null;
+
+        if (!enrollmentId || !customerId) {
+            console.error("Stripe webhook: missing session metadata", session.id);
+            return;
         }
-    }
 
-    return new Response(null, { status: 200 });
-}
+        const enrollment = await tx.enrollment.findUnique({
+            where: {
+                id: enrollmentId,
+            },
+            select: {
+                id: true,
+                userId: true,
+                courseId: true,
+                amount: true,
+            },
+        });
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-    const enrollmentId = session.metadata?.enrollmentId;
-    const customerId = session.customer as string | null;
+        if (!enrollment) {
+            console.error("Stripe webhook: enrollment not found", enrollmentId);
+            return;
+        }
 
-    if (!enrollmentId || !customerId) {
-        console.error("Stripe webhook: missing session metadata", session.id);
-        return;
-    }
+        const user = await tx.user.findUnique({
+            where: {
+                stripeCustomerId: customerId,
+            },
+            select: {
+                id: true,
+            },
+        });
 
-    const enrollment = await prisma.enrollment.findUnique({
-        where: {
-            id: enrollmentId,
-        },
-        select: {
-            id: true,
-            userId: true,
-            amount: true,
-        },
-    });
+        if (!user || user.id !== enrollment.userId) {
+            console.error(
+                "Stripe webhook: customer does not own enrollment",
+                enrollmentId
+            );
+            return;
+        }
 
-    if (!enrollment) {
-        console.error("Stripe webhook: enrollment not found", enrollmentId);
-        return;
-    }
+        if (session.payment_status !== "paid") {
+            console.error("Stripe webhook: session not paid", session.id);
+            return;
+        }
 
-    const user = await prisma.user.findUnique({
-        where: {
-            stripeCustomerId: customerId,
-        },
-        select: {
-            id: true,
-        },
-    });
+        const amountTotal = session.amount_total ?? enrollment.amount;
 
-    if (!user || user.id !== enrollment.userId) {
-        console.error(
-            "Stripe webhook: customer does not own enrollment",
-            enrollmentId
-        );
-        return;
-    }
+        await tx.enrollment.update({
+            where: {
+                id: enrollment.id,
+            },
+            data: {
+                status: "Active",
+                amount: amountTotal,
+            },
+        });
 
-    if (session.payment_status !== "paid") {
-        console.error("Stripe webhook: session not paid", session.id);
-        return;
-    }
+        const events: DomainEventInput[] = [
+            {
+                eventType: "payment.succeeded",
+                aggregateType: "enrollment",
+                aggregateId: enrollment.id,
+                partitionKey: enrollment.userId,
+                payload: {
+                    enrollmentId: enrollment.id,
+                    userId: enrollment.userId,
+                    courseId: enrollment.courseId,
+                    amountTotal,
+                    currency: session.currency ?? "usd",
+                    stripeSessionId: session.id,
+                },
+            },
+            {
+                eventType: "course.enrolled",
+                aggregateType: "enrollment",
+                aggregateId: enrollment.id,
+                partitionKey: enrollment.userId,
+                payload: {
+                    enrollmentId: enrollment.id,
+                    userId: enrollment.userId,
+                    courseId: enrollment.courseId,
+                },
+            },
+        ];
 
-    await prisma.enrollment.update({
-        where: {
-            id: enrollment.id,
-        },
-        data: {
-            status: "Active",
-            amount: session.amount_total ?? enrollment.amount,
-        },
+        await tx.outboxEvent.createMany({
+            data: domainEvents(events),
+        });
     });
 }
