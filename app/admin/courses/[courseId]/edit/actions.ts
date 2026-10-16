@@ -3,6 +3,7 @@
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import { prisma } from "@/lib/db";
+import { enqueueVideoProcessingJob } from "@/lib/rabbitmq";
 import { stripe } from "@/lib/stripe";
 import { ApiResponse } from "@/lib/types";
 import { chapterSchema, ChapterSchemaType, courseSchema, CourseSchemaType, lessonSchema } from "@/lib/zodSchemas";
@@ -283,7 +284,9 @@ export async function createLesson(values: ChapterSchemaType): Promise<ApiRespon
             };
         }
 
-        await prisma.$transaction(async (tx) => {
+        const newVideoKey = result.data.videoKey;
+
+        const job = await prisma.$transaction(async (tx) => {
             const maxPos = await tx.lesson.findFirst({
                 where: {
                     chapterId: result.data.chapterId,
@@ -297,22 +300,49 @@ export async function createLesson(values: ChapterSchemaType): Promise<ApiRespon
             });
 
 
-            await tx.lesson.create({
+            const lesson = await tx.lesson.create({
                 data: {
                     title: result.data.name,
                     description: result.data.description,
-                    videoKey: result.data.videoKey,
+                    videoKey: newVideoKey,
                     thumbnailKey: result.data.thumbnailKey,
                     chapterId: result.data.chapterId,
                     position: (maxPos?.position ?? 0) + 1,
+                    ...(newVideoKey
+                        ? { videoProcessingStatus: "Pending" as const }
+                        : {}),
+                },
+            });
+
+            if (!newVideoKey) {
+                return null;
+            }
+
+            return tx.videoProcessingJob.create({
+                data: {
+                    lessonId: lesson.id,
+                    sourceKey: newVideoKey,
                 },
             });
         });
+
+        if (job) {
+            try {
+                await enqueueVideoProcessingJob(job.id);
+            } catch (error) {
+                console.error(
+                    "Failed to enqueue video processing job:",
+                    job.id,
+                    error
+                );
+            }
+        }
+
         revalidatePath(`/admin/courses/${result.data.courseId}/edit`);
 
         return {
             status: 'success',
-            message: 'Lesson Craeted Successfully'
+            message: 'Lesson created successfully'
         }
 
     } catch {
