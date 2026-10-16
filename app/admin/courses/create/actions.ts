@@ -58,7 +58,7 @@ export async function CreateCourse(
             description: validation.data.smallDescription,
             default_price_data: {
                 currency: "usd",
-                unit_amount: validation.data.price * 100,
+                unit_amount: Math.round(validation.data.price * 100),
             },
         });
 

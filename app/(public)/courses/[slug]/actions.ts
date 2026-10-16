@@ -120,11 +120,11 @@ export async function enrollInCourseAction(
             create: {
                 userId: user.id,
                 courseId: course.id,
-                amount: course.price * 100,
+                amount: Math.round(course.price * 100),
                 status: "Pending",
             },
             update: {
-                amount: course.price * 100,
+                amount: Math.round(course.price * 100),
                 status: "Pending",
             },
             select: {
