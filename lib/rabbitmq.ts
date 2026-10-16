@@ -1,8 +1,9 @@
 import amqp from "amqplib";
 import type { ChannelModel, ConfirmChannel } from "amqplib";
 
-const VIDEO_QUEUE = "video.processing";
-const VIDEO_DLQ = "video.processing.dlq";
+export const VIDEO_QUEUE = "video.processing";
+export const VIDEO_DLQ = "video.processing.dlq";
+export const VIDEO_RETRY_QUEUE = "video.processing.retry";
 
 let channelPromise: Promise<ConfirmChannel> | null = null;
 
@@ -39,6 +40,11 @@ async function connect(): Promise<ConfirmChannel> {
         deadLetterExchange: "",
         deadLetterRoutingKey: VIDEO_DLQ,
     });
+    await channel.assertQueue(VIDEO_RETRY_QUEUE, {
+        durable: true,
+        deadLetterExchange: "",
+        deadLetterRoutingKey: VIDEO_QUEUE,
+    });
 
     return channel;
 }
@@ -66,6 +72,34 @@ export async function enqueueVideoProcessingJob(jobId: string): Promise<void> {
                 persistent: true,
                 contentType: "application/json",
                 messageId: jobId,
+            },
+            (error) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                resolve();
+            }
+        );
+    });
+}
+
+export async function enqueueVideoProcessingRetry(
+    jobId: string,
+    delayMs: number
+): Promise<void> {
+    const channel = await getVideoProcessingChannel();
+
+    await new Promise<void>((resolve, reject) => {
+        channel.publish(
+            "",
+            VIDEO_RETRY_QUEUE,
+            Buffer.from(JSON.stringify({ jobId })),
+            {
+                persistent: true,
+                contentType: "application/json",
+                messageId: jobId,
+                expiration: String(delayMs),
             },
             (error) => {
                 if (error) {
