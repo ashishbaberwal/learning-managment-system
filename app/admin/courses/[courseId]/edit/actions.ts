@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
+import { invalidateCatalogueCache } from "@/lib/cache";
 import { prisma } from "@/lib/db";
 import { enqueueVideoProcessingJob } from "@/lib/rabbitmq";
 import { stripe } from "@/lib/stripe";
@@ -118,6 +119,8 @@ export async function editCourse(data: CourseSchemaType, courseId: string): Prom
             }
         }
 
+        await invalidateCatalogueCache();
+
         return {
             status: 'success',
             message: 'Course updated successfully',
@@ -166,6 +169,7 @@ export async function reorderLessons(
         await prisma.$transaction(updates);
 
         revalidatePath(`/admin/courses/${courseId}/edit`);
+        await invalidateCatalogueCache();
 
         return {
             status: "success",
@@ -208,6 +212,7 @@ export async function reorderChapters(courseId: string, chapters: { id: string; 
         await prisma.$transaction(updates);
 
         revalidatePath(`/admin/courses/${courseId}/edit`);
+        await invalidateCatalogueCache();
 
         return {
             status: "success",
@@ -258,6 +263,7 @@ export async function createChapter(values: ChapterSchemaType): Promise<ApiRespo
             });
         });
         revalidatePath(`/admin/courses/${result.data.courseId}/edit`);
+        await invalidateCatalogueCache();
 
         return {
             status: 'success',
@@ -339,6 +345,7 @@ export async function createLesson(values: ChapterSchemaType): Promise<ApiRespon
         }
 
         revalidatePath(`/admin/courses/${result.data.courseId}/edit`);
+        await invalidateCatalogueCache();
 
         return {
             status: 'success',
@@ -417,6 +424,7 @@ export async function deleteLesson({ chapterId, courseId, lessonId }: { chapterI
         ]);
 
         revalidatePath(`/admin/courses/${courseId}/edit`);
+        await invalidateCatalogueCache();
 
         return {
             status: "success",

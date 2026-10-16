@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, {  fixedWindow } from "@/lib/arcjet";
+import { invalidateCatalogueCache } from "@/lib/cache";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { S3 } from "@/lib/S3Client";
@@ -146,6 +147,7 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
         });
 
         revalidatePath("/admin/courses");
+        await invalidateCatalogueCache();
 
         return {
             status: "success",

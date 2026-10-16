@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
+import { invalidateCatalogueCache } from "@/lib/cache";
 
 import { prisma } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
@@ -69,6 +70,8 @@ export async function CreateCourse(
                 stripePriceId: data.default_price as string,
             },
         });
+
+        await invalidateCatalogueCache();
 
         return {
             status: "success",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { getRecommendedCourses } from "@/lib/recommendations";
+import { getRecommendedCourses } from "@/app/data/user/get-recommended-courses";
 
 export async function GET() {
     const session = await auth.api.getSession({

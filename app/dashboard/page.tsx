@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/general/EmptyState";
 import { Badge } from "@/components/ui/badge";
-import { getRecommendedCourses } from "@/lib/recommendations";
+import { getRecommendedCourses } from "../data/user/get-recommended-courses";
 import { getAllCourses } from "../data/course/get-all-courses";
 import { getEnrolledCourses } from "../data/user/get-enrolled-courses";
 import { requireUser } from "../data/user/require-user";

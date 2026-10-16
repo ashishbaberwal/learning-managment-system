@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/app/data/admin/require-admin"
+import { invalidateCatalogueCache } from "@/lib/cache";
 import { prisma } from "@/lib/db";
 import { enqueueVideoProcessingJob } from "@/lib/rabbitmq";
 import { ApiResponse } from "@/lib/types";
@@ -82,6 +83,8 @@ export async function updateLesson(values: LessonSchemaType, lessonId: string): 
                 );
             }
         }
+
+        await invalidateCatalogueCache();
 
         return {
             status: 'success',
