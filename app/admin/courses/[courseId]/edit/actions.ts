@@ -3,6 +3,7 @@
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import { prisma } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
 import { ApiResponse } from "@/lib/types";
 import { chapterSchema, ChapterSchemaType, courseSchema, CourseSchemaType, lessonSchema } from "@/lib/zodSchemas";
 import { request } from "@arcjet/next";
@@ -45,8 +46,50 @@ export async function editCourse(data: CourseSchemaType, courseId: string): Prom
         if (!result.success) {
             return {
                 status: 'error',
-                message: 'Inavlid data',
+                message: 'Invalid data',
             };
+        }
+
+        const existingCourse = await prisma.course.findUnique({
+            where: {
+                id: courseId,
+                userId: user.user.id,
+            },
+            select: {
+                id: true,
+                price: true,
+                stripePriceId: true,
+            },
+        });
+
+        if (!existingCourse) {
+            return {
+                status: 'error',
+                message: 'Course not found',
+            };
+        }
+
+        let stripePriceId = existingCourse.stripePriceId;
+        let previousStripePriceId: string | null = null;
+
+        if (result.data.price !== existingCourse.price) {
+            const currentPrice = await stripe.prices.retrieve(
+                existingCourse.stripePriceId
+            );
+
+            const productId =
+                typeof currentPrice.product === "string"
+                    ? currentPrice.product
+                    : currentPrice.product.id;
+
+            const newPrice = await stripe.prices.create({
+                product: productId,
+                currency: "usd",
+                unit_amount: Math.round(result.data.price * 100),
+            });
+
+            stripePriceId = newPrice.id;
+            previousStripePriceId = existingCourse.stripePriceId;
         }
 
         await prisma.course.update({
@@ -56,19 +99,34 @@ export async function editCourse(data: CourseSchemaType, courseId: string): Prom
             },
             data: {
                 ...result.data,
+                stripePriceId,
             },
         });
 
+        if (previousStripePriceId) {
+            try {
+                await stripe.prices.update(previousStripePriceId, {
+                    active: false,
+                });
+            } catch (error) {
+                console.error(
+                    "Failed to archive previous Stripe price:",
+                    previousStripePriceId,
+                    error
+                );
+            }
+        }
+
         return {
             status: 'success',
-            message: 'Course update successfully',
+            message: 'Course updated successfully',
         }
 
     } catch {
 
         return {
             status: 'error',
-            message: 'falied to upadte course'
+            message: 'Failed to update course'
         }
 
     }
