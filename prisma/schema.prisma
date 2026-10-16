@@ -242,4 +242,27 @@ model StripeWebhookEvent {
   @@index([eventType, processedAt])
 }
 
+enum OutboxStatus {
+  Pending
+  Published
+}
+
+model OutboxEvent {
+  id            String       @id @default(uuid())
+  topic         String       @default("lms.domain.events")
+  eventType     String
+  aggregateType String
+  aggregateId   String
+  partitionKey  String
+  payload       Json
+  status        OutboxStatus @default(Pending)
+  attempts      Int          @default(0)
+  lastError     String?
+  createdAt     DateTime     @default(now())
+  publishedAt   DateTime?
+
+  @@index([status, createdAt])
+  @@index([aggregateType, aggregateId])
+}
+
 
