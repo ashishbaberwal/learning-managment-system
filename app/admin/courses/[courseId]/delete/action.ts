@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { S3 } from "@/lib/S3Client";
 import { ApiResponse } from "@/lib/types";
-import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { request } from "@arcjet/next";
 import { revalidatePath } from "next/cache";
 
@@ -18,6 +18,32 @@ const aj = arcjet
             max: 5,
         })
     );
+
+async function deleteKeys(bucket: string, keys: string[]) {
+    for (let i = 0; i < keys.length; i += 1000) {
+        const batch = keys.slice(i, i + 1000);
+
+        if (batch.length === 0) {
+            continue;
+        }
+
+        const result = await S3.send(
+            new DeleteObjectsCommand({
+                Bucket: bucket,
+                Delete: {
+                    Objects: batch.map((Key) => ({ Key })),
+                    Quiet: true,
+                },
+            })
+        );
+
+        if (result.Errors && result.Errors.length > 0) {
+            throw new Error(
+                `Failed to delete ${result.Errors.length} S3 object(s)`
+            );
+        }
+    }
+}
 
 export async function deleteCourse(courseId: string): Promise<ApiResponse> {
     const session = await requireAdmin();
@@ -57,6 +83,7 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
                     select: {
                         lessons: {
                             select: {
+                                id: true,
                                 thumbnailKey: true,
                                 videoKey: true,
                             },
@@ -73,34 +100,42 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
             };
         }
 
-        const keys = [
+        const lessons = course.chapter.flatMap((chapter) => chapter.lessons);
+
+        const publicKeys = [
             course.fileKey,
-            ...course.chapter.flatMap((chapter) =>
-                chapter.lessons.flatMap((lesson) => [
-                    lesson.thumbnailKey,
-                    lesson.videoKey,
-                ])
-            ),
+            ...lessons.map((lesson) => lesson.thumbnailKey),
         ].filter((key): key is string => Boolean(key));
 
-        for (let i = 0; i < keys.length; i += 1000) {
-            const batch = keys.slice(i, i + 1000);
+        const videoKeys = lessons
+            .map((lesson) => lesson.videoKey)
+            .filter((key): key is string => Boolean(key));
 
-            const result = await S3.send(
-                new DeleteObjectsCommand({
-                    Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
-                    Delete: {
-                        Objects: batch.map((Key) => ({ Key })),
-                        Quiet: true,
-                    },
-                })
-            );
+        await deleteKeys(env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES, publicKeys);
+        await deleteKeys(env.S3_VIDEO_BUCKET_NAME, videoKeys);
 
-            if (result.Errors && result.Errors.length > 0) {
-                throw new Error(
-                    `Failed to delete ${result.Errors.length} S3 object(s)`
+        for (const lesson of lessons) {
+            let continuationToken: string | undefined;
+
+            do {
+                const listed = await S3.send(
+                    new ListObjectsV2Command({
+                        Bucket: env.S3_VIDEO_BUCKET_NAME,
+                        Prefix: `hls/${lesson.id}/`,
+                        ContinuationToken: continuationToken,
+                    })
                 );
-            }
+
+                const hlsKeys = (listed.Contents ?? [])
+                    .map((object) => object.Key)
+                    .filter((key): key is string => Boolean(key));
+
+                await deleteKeys(env.S3_VIDEO_BUCKET_NAME, hlsKeys);
+
+                continuationToken = listed.IsTruncated
+                    ? listed.NextContinuationToken
+                    : undefined;
+            } while (continuationToken);
         }
 
         await prisma.course.delete({

@@ -89,8 +89,12 @@ export async function POST(request: Request) {
 
         const uniqueKey = `${uuidv4()}-${safeFileName}`
 
+        const bucket = isImageType
+            ? env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES
+            : env.S3_VIDEO_BUCKET_NAME;
+
         const command = new PutObjectCommand({
-            Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
+            Bucket: bucket,
             ContentType: contentType,
             ContentLength: size,
             Key: uniqueKey

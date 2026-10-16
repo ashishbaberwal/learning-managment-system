@@ -6,21 +6,25 @@ import { BookIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 interface iAppProps {
+    lessonId: string;
     videoKey: string | null;
     thumbnailKey: string | null;
     hlsKey: string | null;
 }
 
 export function LessonVideoPlayer({
+    lessonId,
     videoKey,
     thumbnailKey,
     hlsKey,
 }: iAppProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    const hlsUrl = useConstructUrl(hlsKey ?? "");
-    const videoUrl = useConstructUrl(videoKey ?? "");
     const thumbnailUrl = useConstructUrl(thumbnailKey ?? "");
+    const hlsUrl = hlsKey ? `/api/lessons/${lessonId}/stream/${hlsKey}` : "";
+    const videoUrl = videoKey
+        ? `/api/lessons/${lessonId}/stream/${videoKey}`
+        : "";
 
     useEffect(() => {
         const video = videoRef.current;

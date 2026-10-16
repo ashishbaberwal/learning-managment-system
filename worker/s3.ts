@@ -8,14 +8,14 @@ import { pipeline } from "node:stream/promises";
 import type { Readable } from "node:stream";
 
 const endpoint = process.env.AWS_ENDPOINT_URL_S3;
-const bucket = process.env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES;
+const bucket = process.env.S3_VIDEO_BUCKET_NAME;
 
 if (!endpoint) {
     throw new Error("AWS_ENDPOINT_URL_S3 is not set");
 }
 
 if (!bucket) {
-    throw new Error("NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES is not set");
+    throw new Error("S3_VIDEO_BUCKET_NAME is not set");
 }
 
 const s3 = new S3Client({

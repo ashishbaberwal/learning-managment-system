@@ -10,6 +10,7 @@ import { z } from "zod";
 
 const deleteFileSchema = z.object({
     key: z.string().min(1, { message: "Object key is required" }),
+    fileType: z.enum(["image", "video"]).default("image"),
 });
 
 const aj = arcjet.withRule(
@@ -44,10 +45,15 @@ export async function DELETE(request: Request) {
             );
         }
 
-        const { key } = validation.data;
+        const { key, fileType } = validation.data;
+
+        const bucket =
+            fileType === "video"
+                ? env.S3_VIDEO_BUCKET_NAME
+                : env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES;
 
         const command = new DeleteObjectCommand({
-            Bucket: env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES,
+            Bucket: bucket,
             Key: key,
         });
 

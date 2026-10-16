@@ -43,8 +43,40 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
         isDeleting: false,
         fileType: fileTypeAccepted,
         key: value,
-        objectUrl: value ? fileUrl : undefined,
+        objectUrl:
+            value && fileTypeAccepted === "image" ? fileUrl : undefined,
     });
+
+    useEffect(() => {
+        if (fileTypeAccepted !== "video" || !value) {
+            return;
+        }
+
+        let cancelled = false;
+
+        fetch("/api/s3/read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key: value }),
+        })
+            .then((response) =>
+                response.ok
+                    ? response.json()
+                    : Promise.reject(new Error("Failed to load preview"))
+            )
+            .then(({ url }: { url: string }) => {
+                if (!cancelled) {
+                    setFileState((prev) =>
+                        prev.objectUrl ? prev : { ...prev, objectUrl: url }
+                    );
+                }
+            })
+            .catch(() => undefined);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [fileTypeAccepted, value]);
 
     const uploadFile = useCallback(async (file: File) => {
         
@@ -180,6 +212,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     key: fileState.key,
+                    fileType: fileState.fileType,
                 }),
             });
 

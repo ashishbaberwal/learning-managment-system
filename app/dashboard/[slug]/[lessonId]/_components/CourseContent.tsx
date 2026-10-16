@@ -43,6 +43,7 @@ export function CourseContent({ data }: iAppProps) {
     return (
         <div className="flex flex-col h-full bg-background pl-6">
             <LessonVideoPlayer
+                lessonId={data.id}
                 videoKey={data.videoKey}
                 thumbnailKey={data.thumbnailKey}
                 hlsKey={data.videoJobs[0]?.outputKey ?? null}
