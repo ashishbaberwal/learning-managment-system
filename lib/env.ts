@@ -19,6 +19,7 @@ export const env = createEnv({
         STRIPE_WEBHOOK_SECRET: z.string().min(1),
         AMQP_URL: z.string().url(),
         S3_VIDEO_BUCKET_NAME: z.string().min(1),
+        REDIS_URL: z.string().url().default("redis://localhost:6379"),
         
     },
 
