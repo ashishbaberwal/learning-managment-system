@@ -9,22 +9,62 @@ export async function markLessonComplete(
     lessonId: string,
     slug: string
 ): Promise<ApiResponse> {
-    const session = await requireUser();
+    const user = await requireUser();
 
     try {
+        const lesson = await prisma.lesson.findUnique({
+            where: {
+                id: lessonId,
+            },
+            select: {
+                id: true,
+                Chapter: {
+                    select: {
+                        courseId: true,
+                    },
+                },
+            },
+        });
+
+        if (!lesson) {
+            return {
+                status: "error",
+                message: "Lesson not found",
+            };
+        }
+
+        const enrollment = await prisma.enrollment.findUnique({
+            where: {
+                userId_courseId: {
+                    userId: user.id,
+                    courseId: lesson.Chapter.courseId,
+                },
+            },
+            select: {
+                status: true,
+            },
+        });
+
+        if (enrollment?.status !== "Active") {
+            return {
+                status: "error",
+                message: "You are not enrolled in this course",
+            };
+        }
+
         await prisma.lessonProgress.upsert({
             where: {
                 userId_lessonId: {
-                    userId: session.id,
-                    lessonId: lessonId,
+                    userId: user.id,
+                    lessonId: lesson.id,
                 },
             },
             update: {
                 completed: true,
             },
             create: {
-                lessonId: lessonId,
-                userId: session.id,
+                lessonId: lesson.id,
+                userId: user.id,
                 completed: true,
             },
         });
@@ -33,12 +73,13 @@ export async function markLessonComplete(
 
         return {
             status: "success",
-            message: "Progress upadted",
+            message: "Progress updated",
         };
-    } catch {
+    } catch (error) {
+        console.error("markLessonComplete failed:", error);
         return {
-            status: "success",
-            message: "failed to mark lesson as complete",
+            status: "error",
+            message: "Failed to mark lesson as complete",
         };
     }
 }
