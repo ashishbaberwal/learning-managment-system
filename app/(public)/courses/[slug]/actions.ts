@@ -35,9 +35,10 @@ export async function enrollInCourseAction(
                 message: "You Have been Blocked",
             };
         }
-        const course = await prisma.course.findUnique({
+        const course = await prisma.course.findFirst({
             where: {
                 id: courseId,
+                status: "Published",
             },
             select: {
                 id: true,
