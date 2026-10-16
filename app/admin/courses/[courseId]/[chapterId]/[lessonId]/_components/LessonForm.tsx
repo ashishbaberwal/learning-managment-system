@@ -33,6 +33,7 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { updateLesson } from "./action";
 import { toast } from "sonner";
+import { VideoProcessingStatus } from "./VideoProcessingStatus";
 
 interface iAppProps {
     data: AdminLessonType;
@@ -87,6 +88,16 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
                     <span>Go Back</span>
                 </Link>
                 </h1>
+
+                <VideoProcessingStatus
+                    status={data.videoProcessingStatus}
+                    attempts={data.videoJobs[0]?.attempts}
+                    lastError={data.videoJobs[0]?.lastError}
+                    jobUpdatedAt={data.videoJobs[0]?.updatedAt}
+                    lessonId={data.id}
+                    chapterId={chapterId}
+                    courseId={courseId}
+                />
 
                 <Card>
                     <CardHeader>

@@ -17,6 +17,17 @@ export async function adminGetLesson(id:string) {
             description: true,
             id: true,
             position: true,
+            videoProcessingStatus: true,
+            videoJobs: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: {
+                    status: true,
+                    attempts: true,
+                    lastError: true,
+                    updatedAt: true,
+                },
+            },
         },
     });
 
