@@ -15,7 +15,6 @@ export async function getOrSet<T>(
         }
     } catch (error) {
         console.error("Cache read failed, using loader:", error);
-        return loader();
     }
 
     const value = await loader();
