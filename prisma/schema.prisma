@@ -297,4 +297,24 @@ model DailyStats {
   updatedAt    DateTime @updatedAt
 }
 
+model UserCourse {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+}
+
+model CourseCoOccurrence {
+  id              String @id @default(uuid())
+  courseId        String
+  relatedCourseId String
+  count           Int    @default(0)
+
+  @@unique([courseId, relatedCourseId])
+  @@index([courseId, count])
+}
+
 
