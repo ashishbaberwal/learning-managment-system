@@ -152,6 +152,9 @@ model Lesson {
   videoKey     String?
   position     Int
 
+  videoProcessingStatus VideoProcessingStatus?
+  videoJobs             VideoProcessingJob[]
+
   createdAt      DateTime         @default(now())
   upadtedAt      DateTime         @updatedAt
   Chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
@@ -198,6 +201,35 @@ model LessonProgress {
 
   @@unique([userId, lessonId])
   @@index([lessonId])
+}
+
+enum VideoProcessingStatus {
+  Pending
+  Processing
+  Completed
+  Failed
+}
+
+model VideoProcessingJob {
+  id String @id @default(uuid())
+
+  status    VideoProcessingStatus @default(Pending)
+  attempts  Int                   @default(0)
+  lastError String?
+
+  sourceKey String
+  outputKey String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId String
+
+  @@index([lessonId])
+  @@index([status, createdAt])
 }
 
 model StripeWebhookEvent {
