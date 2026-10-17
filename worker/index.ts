@@ -1,4 +1,5 @@
 import { prisma } from "../lib/db";
+import { startMetricsServer, videoJobsProcessed } from "../lib/metrics";
 import {
     VIDEO_QUEUE,
     enqueueVideoProcessingRetry,
@@ -6,6 +7,8 @@ import {
 } from "../lib/rabbitmq";
 import { RETRY_DELAY_MS, processVideoJob } from "./process-video-job";
 import type { ConsumeMessage } from "amqplib";
+
+const METRICS_PORT = 9465;
 
 function parseJobId(message: ConsumeMessage): string | null {
     try {
@@ -28,6 +31,8 @@ async function main(): Promise<void> {
 
     await channel.prefetch(1);
 
+    startMetricsServer(METRICS_PORT);
+
     console.log("Worker started, waiting for video.processing jobs...");
 
     await channel.consume(
@@ -44,6 +49,7 @@ async function main(): Promise<void> {
                     "Discarding malformed job message:",
                     message.content.toString().slice(0, 500)
                 );
+                videoJobsProcessed.inc({ result: "malformed" });
                 channel.nack(message, false, false);
                 return;
             }
@@ -67,11 +73,14 @@ async function main(): Promise<void> {
                             `Failed to schedule retry for job ${jobId}, requeueing:`,
                             error
                         );
+                        videoJobsProcessed.inc({ result: "requeue" });
                         channel.nack(message, false, true);
                         return;
                     }
+                    videoJobsProcessed.inc({ result: "retry" });
                 } else {
                     console.log(`Job ${jobId} finished with outcome: ${outcome}`);
+                    videoJobsProcessed.inc({ result: outcome });
                 }
 
                 channel.ack(message);
@@ -80,6 +89,7 @@ async function main(): Promise<void> {
                     `Unexpected error while processing job ${jobId}, requeueing:`,
                     error
                 );
+                videoJobsProcessed.inc({ result: "requeue" });
                 channel.nack(message, false, true);
             }
         },

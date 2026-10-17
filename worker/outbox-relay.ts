@@ -1,10 +1,12 @@
 import { prisma } from "../lib/db";
 import { toDomainEventEnvelope } from "../lib/events";
 import { ensureDomainEventsTopic, getKafkaProducer } from "../lib/kafka";
+import { outboxPublished, startMetricsServer } from "../lib/metrics";
 
 const BATCH_SIZE = 50;
 const IDLE_INTERVAL_MS = 1000;
 const ERROR_BACKOFF_MS = 5000;
+const METRICS_PORT = 9464;
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -16,6 +18,8 @@ async function main(): Promise<void> {
     const producer = await getKafkaProducer();
 
     await ensureDomainEventsTopic();
+
+    startMetricsServer(METRICS_PORT);
 
     console.log("Outbox relay started, publishing to lms.domain.events...");
 
@@ -54,6 +58,8 @@ async function main(): Promise<void> {
                     where: { id: event.id },
                     data: { status: "Published", publishedAt: new Date() },
                 });
+
+                outboxPublished.inc();
             } catch (error) {
                 failed = true;
                 console.error(

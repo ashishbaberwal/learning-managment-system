@@ -1,3 +1,4 @@
+import { cacheOperations } from "@/lib/metrics";
 import { redis } from "@/lib/redis";
 
 const KEY_PREFIX = "cache:";
@@ -11,13 +12,16 @@ export async function getOrSet<T>(
         const cached = await redis.get(KEY_PREFIX + key);
 
         if (cached !== null) {
+            cacheOperations.inc({ result: "hit" });
             return JSON.parse(cached) as T;
         }
     } catch (error) {
+        cacheOperations.inc({ result: "error" });
         console.error("Cache read failed, using loader:", error);
     }
 
     const value = await loader();
+    cacheOperations.inc({ result: "miss" });
 
     try {
         await redis.set(

@@ -2,6 +2,7 @@ import { Kafka } from "kafkajs";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/lib/generated/prisma";
 import { DOMAIN_EVENTS_TOPIC, type DomainEventEnvelope } from "@/lib/events";
+import { processedEvents } from "@/lib/metrics";
 
 export async function consumeOnce(
     consumerGroup: string,
@@ -21,6 +22,7 @@ export async function consumeOnce(
     });
 
     if (existing) {
+        processedEvents.inc({ group: consumerGroup, result: "duplicate" });
         return "duplicate";
     }
 
@@ -36,14 +38,18 @@ export async function consumeOnce(
             await apply(tx);
         });
 
+        processedEvents.inc({ group: consumerGroup, result: "applied" });
         return "applied";
     } catch (error) {
         if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === "P2002"
         ) {
+            processedEvents.inc({ group: consumerGroup, result: "duplicate" });
             return "duplicate";
         }
+
+        processedEvents.inc({ group: consumerGroup, result: "error" });
         throw error;
     }
 }

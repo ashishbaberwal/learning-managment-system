@@ -4,6 +4,15 @@ import {
 } from "../lib/analytics";
 import { startDomainEventConsumer } from "../lib/consumer";
 import { prisma } from "../lib/db";
+import { registerKafkaConsumerLag, startMetricsServer } from "../lib/metrics";
+
+const METRICS_PORT = 9466;
+
+startMetricsServer(METRICS_PORT);
+
+registerKafkaConsumerLag(ANALYTICS_CONSUMER_GROUP).catch((error) => {
+    console.error("Kafka lag metrics unavailable:", error);
+});
 
 startDomainEventConsumer({
     clientId: "lms-analytics-consumer",

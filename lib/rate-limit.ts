@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { rateLimitDecisions } from "@/lib/metrics";
 import { redis } from "@/lib/redis";
 
 const SLIDING_WINDOW_SCRIPT = `
@@ -39,6 +40,7 @@ export async function checkRateLimit(
     { limit, windowMs }: { limit: number; windowMs: number }
 ): Promise<RateLimitResult> {
     const now = Date.now();
+    const bucket = identifier.split(":")[0];
 
     try {
         const [allowed, count, retryAfterMs] = (await redis.eval(
@@ -51,6 +53,11 @@ export async function checkRateLimit(
             `${now}-${randomUUID()}`
         )) as [number, number, number];
 
+        rateLimitDecisions.inc({
+            bucket,
+            decision: allowed === 1 ? "allowed" : "denied",
+        });
+
         return {
             allowed: allowed === 1,
             limit,
@@ -58,6 +65,7 @@ export async function checkRateLimit(
             retryAfterMs,
         };
     } catch (error) {
+        rateLimitDecisions.inc({ bucket, decision: "error" });
         console.error("Rate limit check failed, allowing request:", error);
         return { allowed: true, limit, remaining: limit, retryAfterMs: 0 };
     }
