@@ -60,6 +60,7 @@ jobs:
       - run: pnpm exec prisma migrate deploy
       - name: Check for schema drift
         run: pnpm exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      - run: pnpm exec next typegen
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm build
