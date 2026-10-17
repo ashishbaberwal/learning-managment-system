@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 import { PrismaPlugin } from "@prisma/nextjs-monorepo-workaround-plugin";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   /* config options here */
   images: {
     remotePatterns: [

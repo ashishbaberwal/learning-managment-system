@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/lms_ci
+  REDIS_URL: redis://localhost:6379
+  BETTER_AUTH_SECRET: ci-secret
+  BETTER_AUTH_URL: http://localhost:3000
+  AUTH_GITHUB_CLIENT_ID: ci-github-client-id
+  AUTH_GITHUB_SECRET: ci-github-client-secret
+  RESEND_API_KEY: re_ci_placeholder
+  ARCJET_KEY: ajkey_0123456789abcdef0123456789abcdef
+  AWS_ACCESS_KEY_ID: ci-access-key
+  AWS_SECRET_ACCESS_KEY: ci-secret-key
+  AWS_ENDPOINT_URL_S3: https://s3.ci.invalid
+  AWS_ENDPOINT_URL_IAM: https://iam.ci.invalid
+  AWS_REGION: us-east-1
+  STRIPE_SECRET_KEY: sk_test_ci
+  STRIPE_WEBHOOK_SECRET: whsec_ci
+  AMQP_URL: amqp://guest:guest@localhost:5672
+  S3_VIDEO_BUCKET_NAME: lms-ci-videos
+  NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES: lms-ci-images
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: lms_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d lms_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma migrate deploy
+      - name: Check for schema drift
+        run: pnpm exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm lint
+      - run: pnpm build
