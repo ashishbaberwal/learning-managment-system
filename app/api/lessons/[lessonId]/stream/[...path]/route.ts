@@ -6,6 +6,11 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
+import {
+    checkRateLimit,
+    rateLimitHeaders,
+    tooManyRequests,
+} from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -49,6 +54,15 @@ export async function GET(
         if (enrollment?.status !== "Active") {
             return new NextResponse("Not found", { status: 404 });
         }
+    }
+
+    const rateLimit = await checkRateLimit(
+        `stream:user:${session.user.id}`,
+        { limit: 120, windowMs: 60_000 }
+    );
+
+    if (!rateLimit.allowed) {
+        return tooManyRequests(rateLimit);
     }
 
     const key = path.map((segment) => decodeURIComponent(segment)).join("/");
@@ -96,6 +110,10 @@ export async function GET(
                 ? "private, max-age=60"
                 : "private, max-age=3600"
         );
+
+        for (const [name, value] of Object.entries(rateLimitHeaders(rateLimit))) {
+            responseHeaders.set(name, value);
+        }
 
         return new NextResponse(
             Readable.toWeb(object.Body as Readable) as ReadableStream,
